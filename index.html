@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>UIBridge</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+  <header class="ui-chrome" id="chrome-top">
+    <div class="chrome-inner">
+      <span class="brand">UIBridge</span>
+      <label class="preset-picker">
+        <span>プリセット</span>
+        <select id="preset-select" aria-label="プリセット選択"></select>
+      </label>
+    </div>
+  </header>
+
+  <main class="preview" id="preview">
+    <section class="preview-inner">
+      <h1 class="preview-title">Preview</h1>
+      <p class="preview-lead">プリセットを切り替えると、この領域のパーツが即座に変わります。</p>
+
+      <div class="preview-row">
+        <button class="ui-button" type="button">Click me</button>
+        <button class="ui-button" type="button">Secondary</button>
+      </div>
+
+      <div class="ui-card">
+        <h2 class="card-title">Card title</h2>
+        <p class="card-body">これはカードのサンプルです。パーツの見た目はデザイントークンから生成されます。</p>
+      </div>
+
+      <label class="ui-input-wrap">
+        <span class="input-label">入力欄</span>
+        <input class="ui-input" type="text" placeholder="ここに入力…">
+      </label>
+    </section>
+  </main>
+
+  <script type="module" src="assets/js/main.js"></script>
+</body>
+</html>
