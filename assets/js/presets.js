@@ -165,6 +165,40 @@ export const builtinPresets = [
     },
   },
   {
+    id: "preset_glass_blue",
+    name: "グラスボタン（ブルー）",
+    type: "builtin",
+    tokens: { colors: { primary: "#159bc5", text: "#0e5b74", textMuted: "#4a7f92" } },
+    parts: {
+      background: solid("#f5f5f5"),
+      button: {
+        // 3-stop vertical gradient (top light → mid darker → bottom light).
+        background: {
+          type: "gradient",
+          angle: 180,
+          stops: [
+            { color: "#d3ecf8", position: 0 },
+            { color: "#a9d9ed", position: 50 },
+            { color: "#d8eef7", position: 100 },
+          ],
+        },
+        textColor: "#0e5b74",
+        radius: 999,
+        borderWidth: 7,
+        borderColor: "#159bc5",
+        // Inset top highlight + inset bottom shade approximates the ::before
+        // "shine" lens from the source; ::before itself is Phase 2 (spec §10.1).
+        shadow: "inset 0 8px 12px rgba(255,255,255,0.8), inset 0 -10px 18px rgba(0,0,0,0.08), 0 2px 3px rgba(0,0,0,0.08)",
+        paddingX: 40,
+        paddingY: 22,
+        fontSize: 20,
+        fontWeight: 700,
+      },
+      card: { background: "#ffffff", borderRadius: 20, borderColor: "#d8eef7", shadow: "0 2px 8px rgba(21,155,197,0.10)" },
+      input: { background: "#ffffff", borderRadius: 999, borderWidth: 2, borderColor: "#a9d9ed", textColor: "#0e5b74" },
+    },
+  },
+  {
     id: "preset_retro",
     name: "レトロ（ハードシャドウ）",
     type: "builtin",
