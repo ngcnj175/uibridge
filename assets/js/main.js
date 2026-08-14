@@ -7,6 +7,7 @@ import { initControls } from "./controls.js";
 import { clone } from "./state.js";
 import { loadUserPresets, addUserPreset, renameUserPreset, deleteUserPreset } from "./userPresets.js";
 import { initOutput } from "./output.js";
+import { initPng } from "./png.js";
 
 const LS_LAST = "uibridge:lastSelectedPreset";
 const LS_STATE = "uibridge:currentState";
@@ -126,6 +127,7 @@ const controls = initControls({
 });
 
 initOutput({ getState: () => currentState });
+initPng();
 
 // Initial load: persisted currentState wins; else last selected preset (built-in or user); else first builtin.
 let bootstrapped = false;

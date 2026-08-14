@@ -25,5 +25,5 @@ Settings → Pages で `main` ブランチのルートを公開。`.nojekyll` �
 - [x] Step 6: 現在状態の localStorage 保存・復元（先取り）
 - [x] Step 7: ユーザープリセット保存・削除・リネーム
 - [x] Step 8: 出力機能（HTML / CSS変数 / 自然言語 + クリップボードコピー）
-- [ ] Step 9: PNG保存
+- [x] Step 9: PNG保存（html2canvas を CDN 経由で遅延ロード）
 - [ ] Step 10: スマホ実機検証と調整
