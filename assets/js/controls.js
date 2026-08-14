@@ -147,6 +147,7 @@ export function initControls({ getState, onEdit }) {
   function rebuild() {
     body.innerHTML = "";
     const state = getState();
+    if (!state) return;
     const partData = state.parts[activePart];
     const schema = partSchemas[activePart];
     for (const spec of schema) {
