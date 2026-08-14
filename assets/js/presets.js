@@ -188,7 +188,7 @@ export const builtinPresets = [
         borderColor: "#159bc5",
         // The overlay layer produces the top "shine" lens; the box-shadow
         // just handles the depth (inset bottom shade + subtle drop).
-        overlay: { type: "shine", opacity: 1 },
+        overlay: { type: "lens", opacity: 1 },
         shadow: "inset 0 -10px 18px rgba(0,0,0,0.08), 0 2px 3px rgba(0,0,0,0.08)",
         paddingX: 40,
         paddingY: 22,

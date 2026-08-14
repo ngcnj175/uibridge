@@ -14,12 +14,15 @@ const builders = {
   fog: (a) => `linear-gradient(180deg, rgba(255,255,255,${(0.5 * a).toFixed(3)}), rgba(255,255,255,${(0.05 * a).toFixed(3)}))`,
   // Horizontal bright band across the middle.
   band: (a) => `linear-gradient(180deg, rgba(255,255,255,0) 30%, rgba(255,255,255,${(0.5 * a).toFixed(3)}) 45%, rgba(255,255,255,${(0.5 * a).toFixed(3)}) 55%, rgba(255,255,255,0) 70%)`,
+  // Elliptical "lens" highlight — rounded on all sides. Sharp cutoff mimics
+  // the ::before glass lens from typical skeuomorphic buttons.
+  lens: (a) => `radial-gradient(ellipse 85% 45% at 50% 25%, rgba(255,255,255,${(0.65 * a).toFixed(3)}) 55%, rgba(255,255,255,${(0.15 * a).toFixed(3)}) 65%, rgba(255,255,255,0) 68%)`,
 };
 
-export const overlayTypes = ["none", "shine", "fog", "band"];
+export const overlayTypes = ["none", "shine", "lens", "fog", "band"];
 
 export function overlayLabel(type) {
-  return { none: "なし", shine: "上部光沢", fog: "白フォグ", band: "中央帯" }[type] || type;
+  return { none: "なし", shine: "上部光沢", lens: "レンズ光沢", fog: "白フォグ", band: "中央帯" }[type] || type;
 }
 
 export function overlayToCss(overlay) {
