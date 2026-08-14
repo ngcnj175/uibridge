@@ -17,7 +17,7 @@
     </div>
   </header>
 
-  <main class="preview" id="preview">
+  <main class="preview" id="preview" data-role="preview">
     <section class="preview-inner">
       <h1 class="preview-title">Preview</h1>
       <p class="preview-lead">プリセットを切り替えると、この領域のパーツが即座に変わります。</p>
@@ -38,6 +38,20 @@
       </label>
     </section>
   </main>
+
+  <button class="sheet-toggle" id="sheet-toggle" type="button" aria-controls="sheet" aria-expanded="false">調整</button>
+
+  <aside class="sheet" id="sheet" aria-hidden="true">
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <div class="sheet-tabs" role="tablist" id="sheet-tabs">
+      <button role="tab" data-part="background" class="tab is-active">背景</button>
+      <button role="tab" data-part="button" class="tab">ボタン</button>
+      <button role="tab" data-part="card" class="tab">カード</button>
+      <button role="tab" data-part="input" class="tab">入力欄</button>
+    </div>
+    <div class="sheet-body" id="sheet-body"></div>
+  </aside>
+  <div class="sheet-scrim" id="sheet-scrim" hidden></div>
 
   <script type="module" src="assets/js/main.js"></script>
 </body>
