@@ -186,9 +186,10 @@ export const builtinPresets = [
         radius: 999,
         borderWidth: 7,
         borderColor: "#159bc5",
-        // Inset top highlight + inset bottom shade approximates the ::before
-        // "shine" lens from the source; ::before itself is Phase 2 (spec §10.1).
-        shadow: "inset 0 8px 12px rgba(255,255,255,0.8), inset 0 -10px 18px rgba(0,0,0,0.08), 0 2px 3px rgba(0,0,0,0.08)",
+        // The overlay layer produces the top "shine" lens; the box-shadow
+        // just handles the depth (inset bottom shade + subtle drop).
+        overlay: { type: "shine", opacity: 1 },
+        shadow: "inset 0 -10px 18px rgba(0,0,0,0.08), 0 2px 3px rgba(0,0,0,0.08)",
         paddingX: 40,
         paddingY: 22,
         fontSize: 20,

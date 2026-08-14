@@ -1,5 +1,7 @@
-// UIBridge — control panel (bottom sheet). Renders form fields for the
-// active part and dispatches edits back through an onChange callback.
+// UIBridge — control panel. Renders form fields for the active part and
+// dispatches edits back through an onChange callback.
+
+import { overlayTypes, overlayLabel } from "./overlay.js";
 
 const partSchemas = {
   background: [
@@ -17,6 +19,8 @@ const partSchemas = {
     { kind: "range", key: "background.angle", label: "角度", min: 0, max: 360, step: 1, when: (b) => b.background.type === "gradient" },
     { kind: "gradientStop", key: "background.stops.0", label: "開始色", when: (b) => b.background.type === "gradient" },
     { kind: "gradientStop", key: "background.stops.1", label: "終了色", when: (b) => b.background.type === "gradient" },
+    { kind: "overlayType", key: "overlay.type", label: "オーバーレイ" },
+    { kind: "range", key: "overlay.opacity", label: "オーバーレイ濃度", min: 0, max: 1, step: 0.05, when: (b) => b.overlay && b.overlay.type !== "none" },
     { kind: "color", key: "textColor", label: "文字色" },
     { kind: "range", key: "radius", label: "角丸", min: 0, max: 40, step: 1, unit: "px" },
     { kind: "range", key: "borderWidth", label: "枠線太さ", min: 0, max: 8, step: 1, unit: "px" },
@@ -29,6 +33,8 @@ const partSchemas = {
   ],
   card: [
     { kind: "color", key: "background", label: "背景色" },
+    { kind: "overlayType", key: "overlay.type", label: "オーバーレイ" },
+    { kind: "range", key: "overlay.opacity", label: "オーバーレイ濃度", min: 0, max: 1, step: 0.05, when: (b) => b.overlay && b.overlay.type !== "none" },
     { kind: "range", key: "borderRadius", label: "角丸", min: 0, max: 40, step: 1, unit: "px" },
     { kind: "range", key: "borderWidth", label: "枠線太さ", min: 0, max: 8, step: 1, unit: "px" },
     { kind: "color", key: "borderColor", label: "枠線色" },
@@ -82,10 +88,13 @@ function renderField(spec, partData, onChange) {
 
   if (spec.kind === "range") {
     const range = el("input", { type: "range", min: spec.min, max: spec.max, step: spec.step, value });
-    const valEl = el("span", { class: "value" }, `${value}${spec.unit || ""}`);
+    const fmt = (v) => (spec.step && spec.step < 1
+      ? `${Math.round(v * 100)}%`
+      : `${v}${spec.unit || ""}`);
+    const valEl = el("span", { class: "value" }, fmt(value));
     range.addEventListener("input", (e) => {
       const v = Number(e.target.value);
-      valEl.textContent = `${v}${spec.unit || ""}`;
+      valEl.textContent = fmt(v);
       onChange(spec.key, v);
     });
     wrap.append(range, valEl);
@@ -103,6 +112,18 @@ function renderField(spec, partData, onChange) {
     const sel = el("select");
     for (const t of ["solid", "gradient"]) {
       const o = el("option", { value: t }, t);
+      if (value === t) o.selected = true;
+      sel.append(o);
+    }
+    sel.addEventListener("change", (e) => onChange(spec.key, e.target.value, { rebuild: true }));
+    wrap.append(sel, el("span", { class: "value" }, ""));
+    return wrap;
+  }
+
+  if (spec.kind === "overlayType") {
+    const sel = el("select");
+    for (const t of overlayTypes) {
+      const o = el("option", { value: t }, overlayLabel(t));
       if (value === t) o.selected = true;
       sel.append(o);
     }

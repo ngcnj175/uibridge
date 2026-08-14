@@ -2,7 +2,7 @@
 // user-preset management (save / rename / delete) to the preview renderer.
 
 import { builtinPresets } from "./presets.js";
-import { resolvePreset, applyState } from "./render.js";
+import { resolvePreset, applyState, migrateState } from "./render.js";
 import { initControls } from "./controls.js";
 import { clone } from "./state.js";
 import { loadUserPresets, addUserPreset, renameUserPreset, deleteUserPreset } from "./userPresets.js";
@@ -72,7 +72,7 @@ function selectPreset(id) {
   if (user) {
     currentPresetId = user.id;
     select.value = user.id;
-    setState(clone(user.state));
+    setState(migrateState(user.state));
   } else {
     const preset = builtinPresets.find((p) => p.id === id) || builtinPresets[0];
     currentPresetId = preset.id;
@@ -136,7 +136,7 @@ try {
   if (raw) {
     const parsed = JSON.parse(raw);
     if (parsed && parsed.tokens && parsed.parts) {
-      setState(parsed, { persist: false });
+      setState(migrateState(parsed), { persist: false });
       const lastId = localStorage.getItem(LS_LAST);
       if (lastId && (builtinPresets.some((p) => p.id === lastId) || isUserPresetId(lastId))) {
         currentPresetId = lastId;

@@ -41,6 +41,7 @@ export const defaultParts = {
     paddingY: 12,
     fontSize: 16,
     fontWeight: 600,
+    overlay: { type: "none", opacity: 1 },
   },
   card: {
     background: "#ffffff",
@@ -49,6 +50,7 @@ export const defaultParts = {
     borderColor: "#e0e0e0",
     shadow: "0 2px 8px rgba(0,0,0,0.06)",
     padding: 16,
+    overlay: { type: "none", opacity: 1 },
   },
   input: {
     background: "#ffffff",

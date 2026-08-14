@@ -3,6 +3,8 @@
 //   vars: :root CSS custom properties + reusable class rules
 //   text: Japanese natural-language description
 
+import { overlayToCss, overlayLabel } from "./overlay.js";
+
 function bgToCss(bg) {
   if (!bg) return "transparent";
   if (bg.type === "gradient") {
@@ -10,6 +12,17 @@ function bgToCss(bg) {
     return `linear-gradient(${bg.angle}deg, ${stops})`;
   }
   return bg.color;
+}
+
+// Same composition rule as the renderer: if an overlay exists, wrap solid
+// base in a flat gradient so both layers are valid <image> values.
+function composedBg(base, overlay) {
+  const overlayCss = overlayToCss(overlay);
+  if (!overlayCss) return bgToCss(base);
+  const baseImg = base && base.type === "gradient"
+    ? bgToCss(base)
+    : `linear-gradient(${base ? base.color || base : "transparent"}, ${base ? base.color || base : "transparent"})`;
+  return `${overlayCss}, ${baseImg}`;
 }
 
 function styleString(pairs) {
@@ -24,7 +37,7 @@ function buttonStyle(btn) {
     ? `${btn.borderWidth}px solid ${btn.borderColor}`
     : "none";
   return styleString([
-    ["background", bgToCss(btn.background)],
+    ["background", composedBg(btn.background, btn.overlay)],
     ["color", btn.textColor],
     ["border", border],
     ["border-radius", `${btn.radius}px`],
@@ -40,7 +53,7 @@ function cardStyle(card) {
     ? `${card.borderWidth}px solid ${card.borderColor}`
     : "none";
   return styleString([
-    ["background", card.background],
+    ["background", composedBg({ type: "solid", color: card.background }, card.overlay)],
     ["border", border],
     ["border-radius", `${card.borderRadius}px`],
     ["padding", `${card.padding}px`],
@@ -100,7 +113,7 @@ export function toCssVars(state) {
   lines.push(``);
   lines.push(`  --page-bg: ${bgToCss(parts.background)};`);
   lines.push(``);
-  lines.push(`  --btn-bg: ${bgToCss(btn.background)};`);
+  lines.push(`  --btn-bg: ${composedBg(btn.background, btn.overlay)};`);
   lines.push(`  --btn-text: ${btn.textColor};`);
   lines.push(`  --btn-radius: ${btn.radius}px;`);
   lines.push(`  --btn-border: ${btn.borderWidth > 0 ? `${btn.borderWidth}px solid ${btn.borderColor}` : "none"};`);
@@ -109,7 +122,7 @@ export function toCssVars(state) {
   lines.push(`  --btn-font-size: ${btn.fontSize}px;`);
   lines.push(`  --btn-font-weight: ${btn.fontWeight};`);
   lines.push(``);
-  lines.push(`  --card-bg: ${card.background};`);
+  lines.push(`  --card-bg: ${composedBg({ type: "solid", color: card.background }, card.overlay)};`);
   lines.push(`  --card-radius: ${card.borderRadius}px;`);
   lines.push(`  --card-border: ${card.borderWidth > 0 ? `${card.borderWidth}px solid ${card.borderColor}` : "none"};`);
   lines.push(`  --card-shadow: ${card.shadow || "none"};`);
@@ -167,6 +180,12 @@ function describeBorder(width, color) {
   return width > 0 ? `${width}px（${color}）` : "なし";
 }
 
+function describeOverlay(overlay) {
+  if (!overlay || overlay.type === "none") return "なし";
+  const pct = Math.round((Number(overlay.opacity) || 0) * 100);
+  return `${overlayLabel(overlay.type)}（濃度${pct}%）`;
+}
+
 export function toText(state) {
   const { parts } = state;
   const bg = parts.background;
@@ -180,6 +199,7 @@ export function toText(state) {
   lines.push("");
   lines.push("【ボタン】");
   lines.push(`- 背景: ${describeBackground(btn.background)}`);
+  lines.push(`- オーバーレイ: ${describeOverlay(btn.overlay)}`);
   lines.push(`- 文字色: ${btn.textColor}`);
   lines.push(`- 角丸: ${btn.radius}px`);
   lines.push(`- 枠線: ${describeBorder(btn.borderWidth, btn.borderColor)}`);
@@ -189,6 +209,7 @@ export function toText(state) {
   lines.push("");
   lines.push("【カード】");
   lines.push(`- 背景: ${card.background}`);
+  lines.push(`- オーバーレイ: ${describeOverlay(card.overlay)}`);
   lines.push(`- 角丸: ${card.borderRadius}px`);
   lines.push(`- 枠線: ${describeBorder(card.borderWidth, card.borderColor)}`);
   lines.push(`- 影: ${card.shadow || "なし"}`);
