@@ -18,9 +18,25 @@
         <button type="button" id="preset-save" class="chip-btn" title="現在の状態を新しいユーザープリセットとして保存">保存</button>
         <button type="button" id="preset-rename" class="chip-btn" title="選択中のユーザープリセットの名前を変更" hidden>名前変更</button>
         <button type="button" id="preset-delete" class="chip-btn chip-btn--danger" title="選択中のユーザープリセットを削除" hidden>削除</button>
+        <button type="button" id="output-open" class="chip-btn chip-btn--primary" title="現在のデザインをコードとして出力">出力</button>
       </div>
     </div>
   </header>
+
+  <dialog id="output-dialog" class="output-dialog" aria-label="出力">
+    <div class="output-head">
+      <div class="output-tabs" role="tablist" id="output-tabs">
+        <button role="tab" data-format="html" class="tab is-active">HTML + CSS</button>
+        <button role="tab" data-format="vars" class="tab">CSS変数</button>
+        <button role="tab" data-format="text" class="tab">自然言語</button>
+      </div>
+      <div class="output-actions">
+        <button type="button" id="output-copy" class="chip-btn">コピー</button>
+        <button type="button" id="output-close" class="chip-btn">閉じる</button>
+      </div>
+    </div>
+    <pre class="output-code" id="output-code"></pre>
+  </dialog>
 
   <main class="preview" id="preview" data-role="preview">
     <section class="preview-inner">

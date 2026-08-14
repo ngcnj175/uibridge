@@ -70,6 +70,63 @@ body {
 .chip-btn:hover { background: #2a2b30; }
 .chip-btn--danger { color: #ff9a9a; border-color: #5a3a3d; }
 .chip-btn--danger:hover { background: #3a2226; }
+.chip-btn--primary { color: #cbd7ff; border-color: #3d4573; background: #1c2033; }
+.chip-btn--primary:hover { background: #262c48; }
+
+/* --- Output dialog ----------------------------------------------------- */
+
+.output-dialog {
+  border: 1px solid #3a3b40;
+  border-radius: 12px;
+  background: #1c1d21;
+  color: #e6e6e6;
+  padding: 0;
+  max-width: min(760px, 96vw);
+  width: 100%;
+  max-height: 88vh;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+.output-dialog::backdrop { background: rgba(0, 0, 0, 0.55); }
+
+.output-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #3a3b40;
+  flex-wrap: wrap;
+}
+
+.output-tabs { display: flex; gap: 4px; overflow-x: auto; }
+.output-tabs .tab {
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid #3a3b40;
+  background: #26272c;
+  color: #b8b9be;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.output-tabs .tab.is-active { background: #2a2b30; color: #e6e6e6; border-color: #55575e; }
+
+.output-actions { display: inline-flex; gap: 6px; }
+
+.output-code {
+  margin: 0;
+  padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+  overflow: auto;
+  max-height: calc(88vh - 60px);
+  background: #0f1013;
+  color: #e6e6e6;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+  line-height: 1.55;
+  white-space: pre;
+  border-radius: 0 0 12px 12px;
+}
 
 .preset-picker select {
   min-height: 36px;

@@ -6,6 +6,7 @@ import { resolvePreset, applyState } from "./render.js";
 import { initControls } from "./controls.js";
 import { clone } from "./state.js";
 import { loadUserPresets, addUserPreset, renameUserPreset, deleteUserPreset } from "./userPresets.js";
+import { initOutput } from "./output.js";
 
 const LS_LAST = "uibridge:lastSelectedPreset";
 const LS_STATE = "uibridge:currentState";
@@ -123,6 +124,8 @@ const controls = initControls({
   getState: () => currentState,
   onEdit: (next) => setState(clone(next)),
 });
+
+initOutput({ getState: () => currentState });
 
 // Initial load: persisted currentState wins; else last selected preset (built-in or user); else first builtin.
 let bootstrapped = false;
