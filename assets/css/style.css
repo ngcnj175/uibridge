@@ -52,6 +52,25 @@ body {
   color: #b8b9be;
 }
 
+.preset-actions {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.chip-btn {
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid #3a3b40;
+  background: #1c1d21;
+  color: #e6e6e6;
+  font-size: 13px;
+  cursor: pointer;
+}
+.chip-btn:hover { background: #2a2b30; }
+.chip-btn--danger { color: #ff9a9a; border-color: #5a3a3d; }
+.chip-btn--danger:hover { background: #3a2226; }
+
 .preset-picker select {
   min-height: 36px;
   min-width: 200px;
