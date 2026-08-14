@@ -140,11 +140,8 @@ function normalizeColorForPicker(v) {
 }
 
 export function initControls({ getState, onEdit }) {
-  const sheet = document.getElementById("sheet");
-  const toggle = document.getElementById("sheet-toggle");
-  const scrim = document.getElementById("sheet-scrim");
-  const body = document.getElementById("sheet-body");
-  const tabs = document.getElementById("sheet-tabs");
+  const body = document.getElementById("panel-body");
+  const tabs = document.getElementById("panel-tabs");
   let activePart = "background";
 
   function rebuild() {
@@ -171,16 +168,6 @@ export function initControls({ getState, onEdit }) {
     rebuild();
   });
 
-  function setOpen(open) {
-    sheet.classList.toggle("is-open", open);
-    sheet.setAttribute("aria-hidden", open ? "false" : "true");
-    toggle.setAttribute("aria-expanded", open ? "true" : "false");
-    scrim.hidden = !open;
-    if (open) rebuild();
-  }
-
-  toggle.addEventListener("click", () => setOpen(!sheet.classList.contains("is-open")));
-  scrim.addEventListener("click", () => setOpen(false));
-
+  rebuild();
   return { rebuild };
 }

@@ -9,7 +9,9 @@ import { clone } from "./state.js";
 const LS_LAST = "uibridge:lastSelectedPreset";
 const LS_STATE = "uibridge:currentState";
 
-const previewRoot = document.getElementById("preview");
+// CSS vars live on <html> so both the preview pane and the control panel
+// (which now sits underneath the preview) can share the same background.
+const previewRoot = document.documentElement;
 const select = document.getElementById("preset-select");
 
 let currentState = null;
