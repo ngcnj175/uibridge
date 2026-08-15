@@ -18,7 +18,7 @@ const builders = {
   // NOTE: in radial-gradient(ellipse W H ...), W and H are RADII (not
   // diameters). Center at button top edge; vertical radius 50% puts the
   // ellipse's bottom edge at exactly the button's vertical center.
-  lens: (a) => `radial-gradient(ellipse 120% 50% at 50% 0%, rgba(255,255,255,${(0.65 * a).toFixed(3)}) 0%, rgba(255,255,255,${(0.60 * a).toFixed(3)}) 88%, rgba(255,255,255,${(0.10 * a).toFixed(3)}) 97%, rgba(255,255,255,0) 100%)`,
+  lens: (a) => `radial-gradient(ellipse 120% 150% at 50% -100%, rgba(255,255,255,${(0.65 * a).toFixed(3)}) 0%, rgba(255,255,255,${(0.60 * a).toFixed(3)}) 88%, rgba(255,255,255,${(0.10 * a).toFixed(3)}) 97%, rgba(255,255,255,0) 100%)`,
 };
 
 export const overlayTypes = ["none", "shine", "lens", "fog", "band"];
