@@ -14,9 +14,11 @@ const builders = {
   fog: (a) => `linear-gradient(180deg, rgba(255,255,255,${(0.5 * a).toFixed(3)}), rgba(255,255,255,${(0.05 * a).toFixed(3)}))`,
   // Horizontal bright band across the middle.
   band: (a) => `linear-gradient(180deg, rgba(255,255,255,0) 30%, rgba(255,255,255,${(0.5 * a).toFixed(3)}) 45%, rgba(255,255,255,${(0.5 * a).toFixed(3)}) 55%, rgba(255,255,255,0) 70%)`,
-  // Elliptical "lens" highlight — rounded on all sides. Sharp cutoff mimics
-  // the ::before glass lens from typical skeuomorphic buttons.
-  lens: (a) => `radial-gradient(ellipse 85% 45% at 50% 25%, rgba(255,255,255,${(0.65 * a).toFixed(3)}) 55%, rgba(255,255,255,${(0.15 * a).toFixed(3)}) 65%, rgba(255,255,255,0) 68%)`,
+  // "Dome" highlight — only the bottom half of a large ellipse is visible.
+  // Center sits at the button's top edge so the ellipse extends past the top
+  // corners (no gap along the rounded top border). Bottom of the ellipse
+  // lands exactly at the button's vertical center (H/2 + Y = 50%).
+  lens: (a) => `radial-gradient(ellipse 120% 100% at 50% 0%, rgba(255,255,255,${(0.65 * a).toFixed(3)}) 0%, rgba(255,255,255,${(0.15 * a).toFixed(3)}) 90%, rgba(255,255,255,0) 100%)`,
 };
 
 export const overlayTypes = ["none", "shine", "lens", "fog", "band"];
