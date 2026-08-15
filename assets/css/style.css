@@ -321,6 +321,17 @@ body {
   font-size: 12px;
 }
 
+.field .value--input {
+  width: 64px;
+  min-width: 64px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid #3a3b40;
+  background: #1c1d21;
+  color: #e6e6e6;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
 .gradient-stops {
   display: flex;
   gap: 8px;

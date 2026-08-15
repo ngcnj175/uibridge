@@ -88,16 +88,26 @@ function renderField(spec, partData, onChange) {
 
   if (spec.kind === "range") {
     const range = el("input", { type: "range", min: spec.min, max: spec.max, step: spec.step, value });
-    const fmt = (v) => (spec.step && spec.step < 1
-      ? `${Math.round(v * 100)}%`
-      : `${v}${spec.unit || ""}`);
-    const valEl = el("span", { class: "value" }, fmt(value));
+    const num = el("input", { type: "number", class: "value value--input", min: spec.min, max: spec.max, step: spec.step, value });
+    const clamp = (v) => Math.min(spec.max, Math.max(spec.min, v));
     range.addEventListener("input", (e) => {
       const v = Number(e.target.value);
-      valEl.textContent = fmt(v);
+      num.value = v;
       onChange(spec.key, v);
     });
-    wrap.append(range, valEl);
+    num.addEventListener("input", (e) => {
+      const raw = Number(e.target.value);
+      if (!Number.isFinite(raw)) return;
+      const v = clamp(raw);
+      range.value = v;
+      onChange(spec.key, v);
+    });
+    num.addEventListener("blur", (e) => {
+      const raw = Number(e.target.value);
+      const v = Number.isFinite(raw) ? clamp(raw) : Number(range.value);
+      num.value = v;
+    });
+    wrap.append(range, num);
     return wrap;
   }
 
@@ -137,13 +147,27 @@ function renderField(spec, partData, onChange) {
     const stop = value;
     const color = el("input", { type: "color", value: normalizeColorForPicker(stop.color) });
     const pos = el("input", { type: "range", min: 0, max: 100, step: 1, value: stop.position });
+    const posNum = el("input", { type: "number", class: "value value--input", min: 0, max: 100, step: 1, value: stop.position });
+    const clamp = (v) => Math.min(100, Math.max(0, v));
     color.addEventListener("input", (e) => onChange(`${spec.key}.color`, e.target.value));
-    pos.addEventListener("input", (e) => onChange(`${spec.key}.position`, Number(e.target.value)));
-    wrap.append(el("div", { class: "gradient-stops" }, [color, pos]), el("span", { class: "value" }, `${stop.position}%`));
-    // Update the value label live:
     pos.addEventListener("input", (e) => {
-      wrap.querySelector(".value").textContent = `${e.target.value}%`;
+      const v = Number(e.target.value);
+      posNum.value = v;
+      onChange(`${spec.key}.position`, v);
     });
+    posNum.addEventListener("input", (e) => {
+      const raw = Number(e.target.value);
+      if (!Number.isFinite(raw)) return;
+      const v = clamp(raw);
+      pos.value = v;
+      onChange(`${spec.key}.position`, v);
+    });
+    posNum.addEventListener("blur", (e) => {
+      const raw = Number(e.target.value);
+      const v = Number.isFinite(raw) ? clamp(raw) : Number(pos.value);
+      posNum.value = v;
+    });
+    wrap.append(el("div", { class: "gradient-stops" }, [color, pos]), posNum);
     return wrap;
   }
 
