@@ -178,10 +178,14 @@ body {
   border-radius: 12px;
   border: 1px dashed rgba(127, 127, 127, 0.3);
 }
+/* iOS Safari needs both an explicit intrinsic size (added as width/height
+   attributes by the renderer) AND a definite CSS width to scale properly
+   inside a flex parent. Cap width via max-width; height follows aspect. */
 .logo-stage svg {
-  max-width: min(100%, var(--logo-size, 300px));
+  display: block;
+  width: 100%;
+  max-width: var(--logo-size, 300px);
   max-height: var(--logo-size, 300px);
-  width: auto;
   height: auto;
 }
 

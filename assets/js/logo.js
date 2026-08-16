@@ -472,10 +472,28 @@ function renderRasterLogo(logo) {
     + `</svg>`;
 }
 
+// iOS Safari doesn't derive an intrinsic size from viewBox when a root
+// <svg> lacks width/height attributes — the element renders at 0×0 and
+// nothing shows up. Adding explicit width/height (matching the viewBox
+// user-unit dimensions) fixes it; CSS on .logo-stage svg then scales the
+// element down to --logo-size while preserving aspect ratio.
+function withExplicitSize(svgString) {
+  if (!svgString) return svgString;
+  if (/<svg\b[^>]*\swidth=/.test(svgString)) return svgString;
+  const m = svgString.match(/viewBox="([^"]+)"/);
+  if (!m) return svgString;
+  const parts = m[1].split(/[\s,]+/).map(Number);
+  if (parts.length !== 4 || parts.some((n) => !Number.isFinite(n))) return svgString;
+  const [, , w, h] = parts;
+  return svgString.replace(/<svg\b/, `<svg width="${w}" height="${h}"`);
+}
+
 export function renderLogoSvg(logo) {
   if (!logo) return "";
   const t = logo.source && logo.source.type;
-  if (t === "svg") return renderUploadedSvg(logo);
-  if (t === "raster") return renderRasterLogo(logo);
-  return renderText(logo);
+  let svg;
+  if (t === "svg") svg = renderUploadedSvg(logo);
+  else if (t === "raster") svg = renderRasterLogo(logo);
+  else svg = renderText(logo);
+  return withExplicitSize(svg);
 }
