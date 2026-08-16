@@ -144,6 +144,35 @@ function escapeXml(s) {
     .replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 }
 
+// Convert CSS-style gradient angle (0° = to top, 90° = to right) into a
+// pair of endpoints inside the unit square used by SVG's objectBoundingBox.
+function gradientEndpoints(angle) {
+  const rad = (angle * Math.PI) / 180;
+  const vx = Math.sin(rad);
+  const vy = -Math.cos(rad);
+  return {
+    x1: 0.5 - vx * 0.5,
+    y1: 0.5 - vy * 0.5,
+    x2: 0.5 + vx * 0.5,
+    y2: 0.5 + vy * 0.5,
+  };
+}
+
+// Build a <linearGradient> definition for a paint object. Returns the
+// markup string and the paint reference ("url(#id)").
+function paintToMarkup(paint, id) {
+  if (!paint || paint.type !== "gradient") {
+    const color = paint ? paint.color : "#000";
+    return { def: "", ref: escapeXml(color) };
+  }
+  const ep = gradientEndpoints(paint.angle || 0);
+  const stops = (paint.stops || [])
+    .map((s) => `<stop offset="${s.position}%" stop-color="${escapeXml(s.color)}"/>`)
+    .join("");
+  const def = `<linearGradient id="${id}" x1="${ep.x1}" y1="${ep.y1}" x2="${ep.x2}" y2="${ep.y2}">${stops}</linearGradient>`;
+  return { def, ref: `url(#${id})` };
+}
+
 function shadowFilter(id, sh) {
   if (!sh || !sh.enabled) return "";
   return `<filter id="${id}" x="-50%" y="-50%" width="200%" height="200%">`
@@ -172,24 +201,28 @@ function renderText(logo) {
   const filterMarkup = shadowFilter(filterId, shadow);
   const filterAttr = shadow && shadow.enabled ? ` filter="url(#${filterId})"` : "";
 
-  // Each outline layer fills its glyph body with the same color as its
+  // Paints (solid or linear gradient) are turned into <linearGradient> defs
+  // when needed and referenced by url(#id) on the corresponding text layer.
+  const fillPaint = paintToMarkup(fill, "logo-fill");
+  const s1Paint = paintToMarkup(stroke1.paint, "logo-stroke1");
+  const s2Paint = paintToMarkup(stroke2.paint, "logo-stroke2");
+
+  // Each outline layer fills its glyph body with the same paint as its
   // stroke, so the band the next layer covers is solid — no background
   // shows through when stroke widths are large.
   const layers = [];
   if (stroke2.enabled) {
     const w = (stroke1.enabled ? stroke1.width : 0) * 2 + stroke2.width * 2;
-    const c = escapeXml(stroke2.color);
-    layers.push(`<text ${common} fill="${c}" stroke="${c}" stroke-width="${w}" stroke-linejoin="round">${label}</text>`);
+    layers.push(`<text ${common} fill="${s2Paint.ref}" stroke="${s2Paint.ref}" stroke-width="${w}" stroke-linejoin="round">${label}</text>`);
   }
   if (stroke1.enabled) {
     const w = stroke1.width * 2;
-    const c = escapeXml(stroke1.color);
-    layers.push(`<text ${common} fill="${c}" stroke="${c}" stroke-width="${w}" stroke-linejoin="round">${label}</text>`);
+    layers.push(`<text ${common} fill="${s1Paint.ref}" stroke="${s1Paint.ref}" stroke-width="${w}" stroke-linejoin="round">${label}</text>`);
   }
-  layers.push(`<text ${common} fill="${escapeXml(fill)}">${label}</text>`);
+  layers.push(`<text ${common} fill="${fillPaint.ref}">${label}</text>`);
 
   return `<svg xmlns="${SVG_NS}" viewBox="0 0 ${approxW} ${approxH}" preserveAspectRatio="xMidYMid meet">`
-    + `<defs>${filterMarkup}</defs>`
+    + `<defs>${filterMarkup}${fillPaint.def}${s1Paint.def}${s2Paint.def}</defs>`
     + `<g${filterAttr}>${layers.join("")}</g>`
     + `</svg>`;
 }
@@ -218,11 +251,15 @@ function renderUploadedSvg(logo) {
       // <g transform="…"> the shapes live under.
       const original = Array.from(svg.childNodes);
 
-      const buildOutlineLayer = (color, width) => {
+      const fillPaint = paintToMarkup(fill, "logo-fill");
+      const s1Paint = paintToMarkup(stroke1.paint, "logo-stroke1");
+      const s2Paint = paintToMarkup(stroke2.paint, "logo-stroke2");
+
+      const buildOutlineLayer = (ref, width) => {
         const layer = doc.createElementNS(SVG_NS, "g");
-        // fill + stroke both set to outline color → no cavity between layers.
-        layer.setAttribute("fill", color);
-        layer.setAttribute("stroke", color);
+        // fill + stroke both set to same paint → no cavity between layers.
+        layer.setAttribute("fill", ref);
+        layer.setAttribute("stroke", ref);
         layer.setAttribute("stroke-width", String(width));
         layer.setAttribute("stroke-linejoin", "round");
         layer.setAttribute("stroke-linecap", "round");
@@ -234,19 +271,26 @@ function renderUploadedSvg(logo) {
         return layer;
       };
 
-      // Wipe svg children, then stack: stroke2 → stroke1 → colored fill layer.
+      // Wipe svg children, then stack: defs → stroke2 → stroke1 → fill.
       for (const n of original) svg.removeChild(n);
+
+      const defsMarkup = fillPaint.def + s1Paint.def + s2Paint.def;
+      if (defsMarkup) {
+        const defs = doc.createElementNS(SVG_NS, "defs");
+        defs.insertAdjacentHTML("beforeend", defsMarkup);
+        svg.appendChild(defs);
+      }
 
       if (stroke2.enabled) {
         const w = (stroke1.enabled ? stroke1.width : 0) * 2 + stroke2.width * 2;
-        svg.appendChild(buildOutlineLayer(stroke2.color, w));
+        svg.appendChild(buildOutlineLayer(s2Paint.ref, w));
       }
       if (stroke1.enabled) {
-        svg.appendChild(buildOutlineLayer(stroke1.color, stroke1.width * 2));
+        svg.appendChild(buildOutlineLayer(s1Paint.ref, stroke1.width * 2));
       }
 
       const fillLayer = doc.createElementNS(SVG_NS, "g");
-      fillLayer.setAttribute("fill", fill);
+      fillLayer.setAttribute("fill", fillPaint.ref);
       fillLayer.setAttribute("stroke", "none");
       for (const n of original) {
         const c = n.cloneNode(true);

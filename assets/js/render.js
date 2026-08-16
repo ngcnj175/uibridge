@@ -26,9 +26,25 @@ export function resolvePreset(preset) {
 // Backfills any fields added in later versions (e.g. overlay) so persisted
 // or user-saved states from earlier builds still render / edit safely.
 export function migrateState(state) {
+  const parts = clone(state.parts || {});
+  // Old logo shape stored fill/stroke*.color as bare strings; the new
+  // schema uses paint objects. Convert in place before mergeDeep so the
+  // subsequent merge fills in angle/stops from defaults.
+  if (parts.logo) {
+    if (typeof parts.logo.fill === "string") {
+      parts.logo.fill = { type: "solid", color: parts.logo.fill };
+    }
+    for (const k of ["stroke1", "stroke2"]) {
+      const s = parts.logo[k];
+      if (s && typeof s.color === "string" && !s.paint) {
+        s.paint = { type: "solid", color: s.color };
+        delete s.color;
+      }
+    }
+  }
   return {
     tokens: mergeDeep(defaultTokens, state.tokens || {}),
-    parts: mergeDeep(defaultParts, state.parts || {}),
+    parts: mergeDeep(defaultParts, parts),
   };
 }
 
@@ -96,7 +112,10 @@ export function applyState(root, state) {
   // into the stage element. Kept separate from CSS vars because outline
   // stacking is easier to express as inline SVG than as CSS.
   const stage = document.getElementById("logo-stage");
-  if (stage && parts.logo) stage.innerHTML = renderLogoSvg(parts.logo);
+  if (stage && parts.logo) {
+    stage.innerHTML = renderLogoSvg(parts.logo);
+    s.setProperty("--logo-size", `${parts.logo.size || 300}px`);
+  }
 
   // Input
   s.setProperty("--input-bg", parts.input.background);

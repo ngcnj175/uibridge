@@ -178,7 +178,12 @@ body {
   border-radius: 12px;
   border: 1px dashed rgba(127, 127, 127, 0.3);
 }
-.logo-stage svg { max-width: 100%; max-height: 260px; height: auto; }
+.logo-stage svg {
+  max-width: min(100%, var(--logo-size, 300px));
+  max-height: var(--logo-size, 300px);
+  width: auto;
+  height: auto;
+}
 
 .ui-button {
   background: var(--btn-bg, #667eea);

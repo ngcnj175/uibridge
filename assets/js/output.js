@@ -184,6 +184,15 @@ function describeBackground(bg) {
   return `単色 ${bg.color}`;
 }
 
+function describePaint(paint) {
+  if (!paint) return "なし";
+  if (paint.type === "gradient") {
+    const [a, b] = paint.stops || [];
+    return `${paint.angle}度グラデ ${a?.color}（${a?.position}%）→ ${b?.color}（${b?.position}%）`;
+  }
+  return `単色 ${paint.color}`;
+}
+
 function describeBorder(width, color) {
   return width > 0 ? `${width}px（${color}）` : "なし";
 }
@@ -226,6 +235,7 @@ export function toText(state) {
   if (parts.logo) {
     const l = parts.logo;
     lines.push("【ロゴ】");
+    lines.push(`- 表示サイズ: ${l.size}px`);
     if (l.source.type === "svg") {
       lines.push(`- ソース: SVGアップロード（${l.source.value || "unnamed.svg"}、${l.source.capability === "full" ? "編集可" : "表示のみ"}）`);
     } else {
@@ -233,9 +243,9 @@ export function toText(state) {
       lines.push(`- フォント: ${l.fontFamily}、${l.fontSize}px、太さ${l.fontWeight}${l.italic ? "、斜体" : ""}`);
     }
     if (l.source.type === "text" || l.source.capability === "full") {
-      lines.push(`- 本体色: ${l.fill}`);
-      lines.push(`- アウトライン: ${l.stroke1.enabled ? `${l.stroke1.width}px（${l.stroke1.color}）` : "なし"}`);
-      lines.push(`- 追加アウトライン: ${l.stroke2.enabled ? `${l.stroke2.width}px（${l.stroke2.color}）` : "なし"}`);
+      lines.push(`- 本体: ${describePaint(l.fill)}`);
+      lines.push(`- アウトライン: ${l.stroke1.enabled ? `${l.stroke1.width}px、${describePaint(l.stroke1.paint)}` : "なし"}`);
+      lines.push(`- 追加アウトライン: ${l.stroke2.enabled ? `${l.stroke2.width}px、${describePaint(l.stroke2.paint)}` : "なし"}`);
     }
     lines.push(`- 影: ${l.shadow.enabled ? `x${l.shadow.x} y${l.shadow.y} blur${l.shadow.blur} ${l.shadow.color}` : "なし"}`);
     lines.push("");

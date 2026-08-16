@@ -71,10 +71,49 @@ export const defaultParts = {
     fontWeight: 700,
     italic: false,
     letterSpacing: 0,
-    fill: "#667eea",
+    // Rendered display size (px), applied as max-width/max-height on the
+    // SVG in the stage. Independent of fontSize so text weight/proportion
+    // can differ from displayed pixel size.
+    size: 300,
+    // A "paint" object represents a fill or stroke color: either a solid
+    // hex or a two-stop linear gradient. Keeping the same shape across
+    // fill/stroke1/stroke2 lets the panel reuse one set of fields.
+    fill: {
+      type: "solid",
+      color: "#667eea",
+      angle: 135,
+      stops: [
+        { color: "#667eea", position: 0 },
+        { color: "#764ba2", position: 100 },
+      ],
+    },
     // stroke1 is the inner outline, stroke2 wraps around stroke1.
-    stroke1: { enabled: true, width: 4, color: "#ffffff" },
-    stroke2: { enabled: false, width: 10, color: "#1a1a1a" },
+    stroke1: {
+      enabled: true,
+      width: 4,
+      paint: {
+        type: "solid",
+        color: "#ffffff",
+        angle: 135,
+        stops: [
+          { color: "#ffffff", position: 0 },
+          { color: "#c0c0c0", position: 100 },
+        ],
+      },
+    },
+    stroke2: {
+      enabled: false,
+      width: 10,
+      paint: {
+        type: "solid",
+        color: "#1a1a1a",
+        angle: 135,
+        stops: [
+          { color: "#1a1a1a", position: 0 },
+          { color: "#404040", position: 100 },
+        ],
+      },
+    },
     shadow: { enabled: false, x: 0, y: 4, blur: 8, color: "rgba(0,0,0,0.3)" },
   },
 };
