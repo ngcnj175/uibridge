@@ -229,20 +229,32 @@ export function toText(state) {
   lines.push("");
   if (parts.logo) {
     const l = parts.logo;
+    const t = l.source.type;
     lines.push("【ロゴ】");
     lines.push(`- 表示サイズ: ${l.size}px`);
-    if (l.source.type === "svg") {
+    if (t === "svg") {
       lines.push(`- ソース: SVGアップロード（${l.source.value || "unnamed.svg"}、${l.source.capability === "full" ? "編集可" : "表示のみ"}）`);
+    } else if (t === "raster") {
+      lines.push(`- ソース: 画像アップロード（${l.source.value || "unnamed"}、${l.source.width}×${l.source.height}）`);
+      lines.push(`- 本体塗り替え: ${l.recolor.enabled ? "あり" : "なし（元画像のまま）"}`);
     } else {
       lines.push(`- テキスト: 「${l.source.value}」`);
       lines.push(`- フォント: ${l.fontFamily}、${l.fontSize}px、太さ${l.fontWeight}${l.italic ? "、斜体" : ""}`);
     }
-    if (l.source.type === "text" || l.source.capability === "full") {
-      lines.push(`- 本体: ${describePaint(l.fill)}`);
+    const bodyEditable = t === "text" || (t === "svg" && l.source.capability === "full") || (t === "raster" && l.recolor.enabled);
+    const outlineEditable = t === "text" || (t === "svg" && l.source.capability === "full") || t === "raster";
+    if (bodyEditable) lines.push(`- 本体: ${describePaint(l.fill)}`);
+    if (outlineEditable) {
       lines.push(`- アウトライン: ${l.stroke1.enabled ? `${l.stroke1.width}px、${describePaint(l.stroke1.paint)}` : "なし"}`);
       lines.push(`- 追加アウトライン: ${l.stroke2.enabled ? `${l.stroke2.width}px、${describePaint(l.stroke2.paint)}` : "なし"}`);
     }
-    lines.push(`- 影: ${l.shadow.enabled ? `x${l.shadow.x} y${l.shadow.y} blur${l.shadow.blur} ${l.shadow.color}` : "なし"}`);
+    if (l.shadow.enabled) {
+      const style = l.shadow.style === "sharp" ? "くっきり" : "ぼかし";
+      const blur = l.shadow.style === "sharp" ? 0 : l.shadow.blur;
+      lines.push(`- 影: ${style}、x${l.shadow.x} y${l.shadow.y} blur${blur} ${l.shadow.color}`);
+    } else {
+      lines.push(`- 影: なし`);
+    }
     lines.push("");
   }
   lines.push("【入力欄】");

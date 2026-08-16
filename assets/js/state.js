@@ -62,10 +62,16 @@ export const defaultParts = {
     paddingY: 10,
   },
   logo: {
-    // source.type: "text" | "svg". For "svg", `markup` holds the sanitized
-    // <svg>…</svg> string; `capability` reports what edits are safe to apply
-    // ("full" = fill/stroke overrides, "display" = render only).
-    source: { type: "text", value: "UIBridge", markup: "", capability: "full" },
+    // source.type: "text" | "svg" | "raster".
+    //   svg    → `markup` holds sanitized <svg>…</svg>; capability = "full"/"display"
+    //   raster → `markup` holds a data: URL (PNG/GIF/WebP); width/height are
+    //            the intrinsic image dimensions (used as the SVG viewBox).
+    // capability is kept on all types so paint gating stays consistent.
+    source: { type: "text", value: "UIBridge", markup: "", capability: "full", width: 0, height: 0 },
+    // Raster mode: apply the body paint (solid/gradient) to the image
+    // silhouette via alpha masking. Off by default so uploads render
+    // as-is; the user opts in when they want a color override.
+    recolor: { enabled: false },
     fontFamily: "system-ui",
     fontSize: 96,
     fontWeight: 700,
@@ -114,7 +120,9 @@ export const defaultParts = {
         ],
       },
     },
-    shadow: { enabled: false, x: 0, y: 4, blur: 8, color: "rgba(0,0,0,0.3)" },
+    // style "soft" = feDropShadow with the given blur; "sharp" forces blur=0
+    // for a hard silhouette shadow (retro sticker look).
+    shadow: { enabled: false, style: "soft", x: 0, y: 4, blur: 8, color: "rgba(0,0,0,0.3)" },
   },
 };
 

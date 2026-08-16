@@ -108,6 +108,50 @@ export const SVG_LIMITS = {
   maxChars: 50_000,
 };
 
+export const RASTER_LIMITS = {
+  maxBytes: 200 * 1024,
+  maxPixels: 2048,
+};
+
+const RASTER_MIME_RE = /^image\/(png|gif|webp)$/i;
+
+// Accept a File (from an <input type=file>) and resolve to a paint-safe
+// data URL + intrinsic dimensions. Throws with a UI message on rejection.
+// PNG / GIF / WebP only — JPEG has no alpha channel so outline detection
+// via <feMorphology in="SourceAlpha"> would just outline the whole rect.
+export async function sanitizeRaster(file) {
+  if (!file || !RASTER_MIME_RE.test(file.type)) {
+    throw new Error("PNG / GIF / WebP のみ対応");
+  }
+  if (file.size > RASTER_LIMITS.maxBytes) {
+    throw new Error(`画像が大きすぎます (${Math.round(RASTER_LIMITS.maxBytes / 1024)}KB以下)`);
+  }
+  const markup = await fileToDataUrl(file);
+  const { width, height } = await loadImageSize(markup);
+  if (width > RASTER_LIMITS.maxPixels || height > RASTER_LIMITS.maxPixels) {
+    throw new Error(`ピクセルサイズが大きすぎます (${RASTER_LIMITS.maxPixels}px以下)`);
+  }
+  return { markup, width, height, capability: "full" };
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(new Error("読み込み失敗"));
+    r.readAsDataURL(file);
+  });
+}
+
+function loadImageSize(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    img.onerror = () => reject(new Error("画像として読み込めません"));
+    img.src = dataUrl;
+  });
+}
+
 // Parse + sanitize + normalize. Throws on hard failure with a UI message.
 export function sanitizeSvg(text) {
   if (typeof text !== "string") throw new Error("SVG が読み取れません");
@@ -175,8 +219,10 @@ function paintToMarkup(paint, id) {
 
 function shadowFilter(id, sh) {
   if (!sh || !sh.enabled) return "";
+  // "sharp" style forces blur=0 → hard silhouette shadow.
+  const blur = sh.style === "sharp" ? 0 : sh.blur;
   return `<filter id="${id}" x="-50%" y="-50%" width="200%" height="200%">`
-    + `<feDropShadow dx="${sh.x}" dy="${sh.y}" stdDeviation="${sh.blur / 2}" flood-color="${escapeXml(sh.color)}"/>`
+    + `<feDropShadow dx="${sh.x}" dy="${sh.y}" stdDeviation="${blur / 2}" flood-color="${escapeXml(sh.color)}"/>`
     + `</filter>`;
 }
 
@@ -361,8 +407,75 @@ function stripFillStroke(node) {
   for (const child of Array.from(node.childNodes)) stripFillStroke(child);
 }
 
+// Raster mode: paint the outline as a colored/gradient rect masked by a
+// dilated copy of the image alpha channel (feMorphology on SourceAlpha).
+// Body stays as the raw <image>, unless recolor is on — then it's a rect
+// filled with the body paint and masked by the original alpha.
+function renderRasterLogo(logo) {
+  const { source, fill, stroke1, stroke2, shadow, recolor } = logo;
+  const { markup: href, width: iw, height: ih } = source;
+  if (!href || !iw || !ih) {
+    return renderText({ ...logo, source: { ...source, value: "(画像なし)" } });
+  }
+
+  const pad = outwardPadding(stroke1, stroke2, shadow);
+  const vbX = -pad, vbY = -pad, vbW = iw + pad * 2, vbH = ih + pad * 2;
+  const url = escapeXml(href);
+
+  const fillPaint = paintToMarkup(fill, "logo-fill");
+  const s1Paint = paintToMarkup(stroke1.paint, "logo-stroke1");
+  const s2Paint = paintToMarkup(stroke2.paint, "logo-stroke2");
+
+  // radius is in image user units — same coordinate space as stroke widths
+  // elsewhere. stroke2 sits under stroke1 so it must dilate further.
+  const s1r = stroke1.width;
+  const s2r = (stroke1.enabled ? stroke1.width : 0) + stroke2.width;
+
+  const dilateFilter = (id, radius) =>
+    `<filter id="${id}" x="-50%" y="-50%" width="200%" height="200%">`
+    + `<feMorphology in="SourceAlpha" operator="dilate" radius="${radius}"/>`
+    + `</filter>`;
+
+  const alphaMask = (id, filter) =>
+    `<mask id="${id}" maskUnits="userSpaceOnUse" x="${vbX}" y="${vbY}" width="${vbW}" height="${vbH}" style="mask-type:alpha">`
+    + `<image href="${url}" x="0" y="0" width="${iw}" height="${ih}"${filter ? ` filter="url(#${filter})"` : ""}/>`
+    + `</mask>`;
+
+  const defs = [
+    fillPaint.def, s1Paint.def, s2Paint.def,
+    stroke2.enabled ? dilateFilter("logo-dilate-s2", s2r) : "",
+    stroke1.enabled ? dilateFilter("logo-dilate-s1", s1r) : "",
+    stroke2.enabled ? alphaMask("logo-mask-s2", "logo-dilate-s2") : "",
+    stroke1.enabled ? alphaMask("logo-mask-s1", "logo-dilate-s1") : "",
+    recolor.enabled ? alphaMask("logo-mask-body", null) : "",
+    shadowFilter("logo-shadow", shadow),
+  ].join("");
+
+  const shadowAttr = shadow && shadow.enabled ? ` filter="url(#logo-shadow)"` : "";
+
+  const layers = [];
+  if (stroke2.enabled) {
+    layers.push(`<rect x="${vbX}" y="${vbY}" width="${vbW}" height="${vbH}" fill="${s2Paint.ref}" mask="url(#logo-mask-s2)"/>`);
+  }
+  if (stroke1.enabled) {
+    layers.push(`<rect x="${vbX}" y="${vbY}" width="${vbW}" height="${vbH}" fill="${s1Paint.ref}" mask="url(#logo-mask-s1)"/>`);
+  }
+  if (recolor.enabled) {
+    layers.push(`<rect x="0" y="0" width="${iw}" height="${ih}" fill="${fillPaint.ref}" mask="url(#logo-mask-body)"/>`);
+  } else {
+    layers.push(`<image href="${url}" x="0" y="0" width="${iw}" height="${ih}"/>`);
+  }
+
+  return `<svg xmlns="${SVG_NS}" viewBox="${vbX} ${vbY} ${vbW} ${vbH}" preserveAspectRatio="xMidYMid meet">`
+    + `<defs>${defs}</defs>`
+    + `<g${shadowAttr}>${layers.join("")}</g>`
+    + `</svg>`;
+}
+
 export function renderLogoSvg(logo) {
   if (!logo) return "";
-  if (logo.source && logo.source.type === "svg") return renderUploadedSvg(logo);
+  const t = logo.source && logo.source.type;
+  if (t === "svg") return renderUploadedSvg(logo);
+  if (t === "raster") return renderRasterLogo(logo);
   return renderText(logo);
 }

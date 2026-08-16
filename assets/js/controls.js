@@ -2,7 +2,7 @@
 // dispatches edits back through an onChange callback.
 
 import { overlayTypes, overlayLabel } from "./overlay.js";
-import { sanitizeSvg, SVG_LIMITS } from "./logo.js";
+import { sanitizeSvg, sanitizeRaster, SVG_LIMITS, RASTER_LIMITS } from "./logo.js";
 
 const FONT_FAMILIES = [
   { value: "system-ui, -apple-system, sans-serif", label: "System Sans" },
@@ -14,15 +14,27 @@ const FONT_FAMILIES = [
   { value: "'Comic Sans MS', cursive", label: "Casual" },
 ];
 
-// A logo paint (fill or stroke) is editable when the source is text, or when
-// an uploaded SVG was classified as safely re-styleable. Uploaded SVGs
-// containing text/images/gradients drop to "display" and skip the paint UI.
-const paintable = (l) => l.source.type === "text" || l.source.capability === "full";
+// Outline paints (stroke1/stroke2) are always available in text/svg-full/
+// raster modes — outlines are computed from the shape or alpha regardless
+// of whether the body is recolored.
+const paintable = (l) =>
+  l.source.type === "text"
+  || (l.source.type === "svg" && l.source.capability === "full")
+  || l.source.type === "raster";
+
+// Body paint (the fill under the outlines) is editable in text/svg-full
+// unconditionally, but in raster mode only when the user opts in via the
+// recolor checkbox — otherwise the raw image pixels are shown.
+const bodyPaintable = (l) =>
+  l.source.type === "text"
+  || (l.source.type === "svg" && l.source.capability === "full")
+  || (l.source.type === "raster" && l.recolor.enabled);
 
 // Emit the 5-field paint block for a given key prefix.
-// `extraWhen` layers on top of `paintable` (e.g. "…and this stroke is enabled").
-function paintFields(keyPrefix, labelPrefix, extraWhen = () => true) {
-  const gate = (l) => paintable(l) && extraWhen(l);
+// `basePredicate` decides whether this paint is editable at all (defaults to
+// the outline rule); `extraWhen` layers on top (e.g. "…and this stroke is enabled").
+function paintFields(keyPrefix, labelPrefix, extraWhen = () => true, basePredicate = paintable) {
+  const gate = (l) => basePredicate(l) && extraWhen(l);
   return [
     { kind: "bgType", key: `${keyPrefix}.type`, label: `${labelPrefix}タイプ`, when: gate },
     { kind: "color", key: `${keyPrefix}.color`, label: `${labelPrefix}色`,
@@ -49,11 +61,13 @@ function strokeBlock(n, { widthMax, labels }) {
 
 function buildLogoSchema() {
   const isText = (l) => l.source.type === "text";
+  const isRaster = (l) => l.source.type === "raster";
   const shadowOn = (l) => l.shadow.enabled;
   return [
     { kind: "sourceType", key: "source.type", label: "ソース" },
     { kind: "text", key: "source.value", label: "文字", when: isText },
     { kind: "svgUpload", key: "source", label: "SVG", when: (l) => l.source.type === "svg" },
+    { kind: "rasterUpload", key: "source", label: "画像", when: isRaster },
     { kind: "range", key: "size", label: "表示サイズ", min: 80, max: 800, step: 4, unit: "px" },
     { kind: "select", key: "fontFamily", label: "フォント", options: FONT_FAMILIES, when: isText },
     { kind: "range", key: "fontSize", label: "文字サイズ", min: 24, max: 200, step: 1, unit: "px", when: isText },
@@ -61,14 +75,20 @@ function buildLogoSchema() {
     { kind: "checkbox", key: "italic", label: "斜体", when: isText },
     { kind: "range", key: "letterSpacing", label: "字間", min: -5, max: 20, step: 0.5, unit: "px", when: isText },
 
-    ...paintFields("fill", "本体"),
+    // Raster only: opt-in to tint the image silhouette with the body paint.
+    { kind: "checkbox", key: "recolor.enabled", label: "本体を色で塗り替え", when: isRaster },
+
+    ...paintFields("fill", "本体", () => true, bodyPaintable),
     ...strokeBlock(1, { widthMax: 30, labels: { enable: "アウトライン", width: "アウトライン太さ", paint: "アウトライン" } }),
     ...strokeBlock(2, { widthMax: 40, labels: { enable: "追加アウトライン", width: "追加太さ", paint: "追加" } }),
 
     { kind: "checkbox", key: "shadow.enabled", label: "影" },
+    { kind: "select", key: "shadow.style", label: "影スタイル",
+      options: [{ value: "soft", label: "ぼかし" }, { value: "sharp", label: "くっきり" }], when: shadowOn },
     { kind: "range", key: "shadow.x", label: "影 X", min: -30, max: 30, step: 1, unit: "px", when: shadowOn },
     { kind: "range", key: "shadow.y", label: "影 Y", min: -30, max: 30, step: 1, unit: "px", when: shadowOn },
-    { kind: "range", key: "shadow.blur", label: "影ぼかし", min: 0, max: 40, step: 1, unit: "px", when: shadowOn },
+    { kind: "range", key: "shadow.blur", label: "影ぼかし量", min: 0, max: 40, step: 1, unit: "px",
+      when: (l) => shadowOn(l) && l.shadow.style !== "sharp" },
     { kind: "color", key: "shadow.color", label: "影色", when: shadowOn },
   ];
 }
@@ -228,14 +248,16 @@ function renderField(spec, partData, onChange) {
       if (value === opt.value) o.selected = true;
       sel.append(o);
     }
-    sel.addEventListener("change", (e) => onChange(spec.key, e.target.value));
+    // Rebuild so selects that gate other fields (e.g. shadow.style hiding
+    // the blur slider) refresh the panel.
+    sel.addEventListener("change", (e) => onChange(spec.key, e.target.value, { rebuild: true }));
     wrap.append(sel, el("span", { class: "value" }, ""));
     return wrap;
   }
 
   if (spec.kind === "sourceType") {
     const sel = el("select");
-    for (const [v, label] of [["text", "テキスト"], ["svg", "SVGアップロード"]]) {
+    for (const [v, label] of [["text", "テキスト"], ["svg", "SVGアップロード"], ["raster", "画像アップロード"]]) {
       const o = el("option", { value: v }, label);
       if (value === v) o.selected = true;
       sel.append(o);
@@ -261,6 +283,25 @@ function renderField(spec, partData, onChange) {
         const text = await f.text();
         const { markup, capability } = sanitizeSvg(text);
         onChange(spec.key, { type: "svg", value: f.name, markup, capability }, { rebuild: true });
+      } catch (err) {
+        status.textContent = err && err.message ? err.message : "読み込み失敗";
+      }
+    });
+    wrap.append(file, status);
+    return wrap;
+  }
+
+  if (spec.kind === "rasterUpload") {
+    const src = value || {};
+    const file = el("input", { type: "file", accept: ".png,.gif,.webp,image/png,image/gif,image/webp" });
+    const status = el("span", { class: "value" },
+      src.markup ? `${src.width}×${src.height}` : "未読み込み");
+    file.addEventListener("change", async (e) => {
+      const f = e.target.files && e.target.files[0];
+      if (!f) return;
+      try {
+        const { markup, width, height, capability } = await sanitizeRaster(f);
+        onChange(spec.key, { type: "raster", value: f.name, markup, width, height, capability }, { rebuild: true });
       } catch (err) {
         status.textContent = err && err.message ? err.message : "読み込み失敗";
       }
