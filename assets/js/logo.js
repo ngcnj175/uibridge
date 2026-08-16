@@ -247,6 +247,12 @@ function renderUploadedSvg(logo) {
   if (cap === "full") {
     const shapes = Array.from(svg.querySelectorAll(SHAPE_SELECTOR));
     if (shapes.length > 0) {
+      // Uploaded SVGs usually have a viewBox that fits the original shapes
+      // tightly. Adding an outline pushes the stroke beyond that box and
+      // gets clipped by the SVG's overflow, so grow the viewBox by the
+      // total outward extent (both outlines + shadow blur/offset).
+      expandViewBox(svg, outwardPadding(stroke1, stroke2, shadow));
+
       // Snapshot the whole current children so clones preserve any wrapping
       // <g transform="…"> the shapes live under.
       const original = Array.from(svg.childNodes);
@@ -312,6 +318,25 @@ function renderUploadedSvg(logo) {
   }
 
   return new XMLSerializer().serializeToString(svg);
+}
+
+function outwardPadding(stroke1, stroke2, shadow) {
+  const s1 = stroke1.enabled ? stroke1.width : 0;
+  const s2 = stroke2.enabled ? stroke2.width : 0;
+  const sh = shadow && shadow.enabled
+    ? Math.max(Math.abs(shadow.x), Math.abs(shadow.y)) + shadow.blur
+    : 0;
+  return s1 + s2 + sh;
+}
+
+function expandViewBox(svg, pad) {
+  if (!pad) return;
+  const raw = svg.getAttribute("viewBox");
+  if (!raw) return;
+  const parts = raw.split(/[\s,]+/).map(Number);
+  if (parts.length !== 4 || parts.some((n) => !Number.isFinite(n))) return;
+  const [x, y, w, h] = parts;
+  svg.setAttribute("viewBox", `${x - pad} ${y - pad} ${w + pad * 2} ${h + pad * 2}`);
 }
 
 // Remove per-element fill/stroke so the layer's group-level fill/stroke
