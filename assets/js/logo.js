@@ -91,15 +91,16 @@ function normalizeViewBox(svg) {
 }
 
 // Classify what edits are safe to apply to the uploaded SVG.
-//   "full"    — single path/shape, single color → fill/stroke override works
-//   "display" — multiple shapes/groups, gradients, or <text> → show as-is
+//   "full"    — plain shape geometry only → fill/stroke override works, even
+//                for multi-shape logos (outline is stacked over every shape)
+//   "display" — embeds text, raster images, or gradients/patterns whose
+//                appearance depends on internal styling → render as-is
 function classifyCapability(svg) {
   if (svg.querySelector("text, tspan")) return "display";
   if (svg.querySelector("image")) return "display";
   if (svg.querySelector("linearGradient, radialGradient, pattern")) return "display";
-  const shapes = svg.querySelectorAll("path, polygon, polyline, rect, circle, ellipse");
-  if (shapes.length === 1) return "full";
-  return "display";
+  const shapes = svg.querySelectorAll("path, polygon, polyline, rect, circle, ellipse, line");
+  return shapes.length > 0 ? "full" : "display";
 }
 
 export const SVG_LIMITS = {
@@ -171,14 +172,19 @@ function renderText(logo) {
   const filterMarkup = shadowFilter(filterId, shadow);
   const filterAttr = shadow && shadow.enabled ? ` filter="url(#${filterId})"` : "";
 
+  // Each outline layer fills its glyph body with the same color as its
+  // stroke, so the band the next layer covers is solid — no background
+  // shows through when stroke widths are large.
   const layers = [];
   if (stroke2.enabled) {
     const w = (stroke1.enabled ? stroke1.width : 0) * 2 + stroke2.width * 2;
-    layers.push(`<text ${common} fill="none" stroke="${escapeXml(stroke2.color)}" stroke-width="${w}" stroke-linejoin="round" paint-order="stroke">${label}</text>`);
+    const c = escapeXml(stroke2.color);
+    layers.push(`<text ${common} fill="${c}" stroke="${c}" stroke-width="${w}" stroke-linejoin="round">${label}</text>`);
   }
   if (stroke1.enabled) {
     const w = stroke1.width * 2;
-    layers.push(`<text ${common} fill="none" stroke="${escapeXml(stroke1.color)}" stroke-width="${w}" stroke-linejoin="round" paint-order="stroke">${label}</text>`);
+    const c = escapeXml(stroke1.color);
+    layers.push(`<text ${common} fill="${c}" stroke="${c}" stroke-width="${w}" stroke-linejoin="round">${label}</text>`);
   }
   layers.push(`<text ${common} fill="${escapeXml(fill)}">${label}</text>`);
 
@@ -188,8 +194,12 @@ function renderText(logo) {
     + `</svg>`;
 }
 
+const SHAPE_SELECTOR = "path, polygon, polyline, rect, circle, ellipse, line";
+
 // SVG-upload mode: reuse the sanitized markup. When capability is "full",
-// override the single shape's fill/stroke; otherwise render as-is.
+// wrap the whole scene in stacked "outline groups" — each group re-draws
+// every primitive shape with a thicker stroke — then place the colored
+// original on top. Works for single- or multi-shape SVGs.
 function renderUploadedSvg(logo) {
   const { source, fill, stroke1, stroke2, shadow, capability } = logo;
   const raw = source.markup;
@@ -202,33 +212,48 @@ function renderUploadedSvg(logo) {
   const cap = capability || source.capability || "display";
 
   if (cap === "full") {
-    const shape = svg.querySelector("path, polygon, polyline, rect, circle, ellipse");
-    if (shape) {
-      // Build stacked clones for stroke2 → stroke1, then colored fill on top.
-      const parent = shape.parentNode;
-      const clones = [];
+    const shapes = Array.from(svg.querySelectorAll(SHAPE_SELECTOR));
+    if (shapes.length > 0) {
+      // Snapshot the whole current children so clones preserve any wrapping
+      // <g transform="…"> the shapes live under.
+      const original = Array.from(svg.childNodes);
+
+      const buildOutlineLayer = (color, width) => {
+        const layer = doc.createElementNS(SVG_NS, "g");
+        // fill + stroke both set to outline color → no cavity between layers.
+        layer.setAttribute("fill", color);
+        layer.setAttribute("stroke", color);
+        layer.setAttribute("stroke-width", String(width));
+        layer.setAttribute("stroke-linejoin", "round");
+        layer.setAttribute("stroke-linecap", "round");
+        for (const n of original) {
+          const c = n.cloneNode(true);
+          if (c.nodeType === 1) stripFillStroke(c);
+          layer.appendChild(c);
+        }
+        return layer;
+      };
+
+      // Wipe svg children, then stack: stroke2 → stroke1 → colored fill layer.
+      for (const n of original) svg.removeChild(n);
+
       if (stroke2.enabled) {
-        const c = shape.cloneNode(true);
         const w = (stroke1.enabled ? stroke1.width : 0) * 2 + stroke2.width * 2;
-        c.setAttribute("fill", "none");
-        c.setAttribute("stroke", stroke2.color);
-        c.setAttribute("stroke-width", String(w));
-        c.setAttribute("stroke-linejoin", "round");
-        c.setAttribute("paint-order", "stroke");
-        clones.push(c);
+        svg.appendChild(buildOutlineLayer(stroke2.color, w));
       }
       if (stroke1.enabled) {
-        const c = shape.cloneNode(true);
-        c.setAttribute("fill", "none");
-        c.setAttribute("stroke", stroke1.color);
-        c.setAttribute("stroke-width", String(stroke1.width * 2));
-        c.setAttribute("stroke-linejoin", "round");
-        c.setAttribute("paint-order", "stroke");
-        clones.push(c);
+        svg.appendChild(buildOutlineLayer(stroke1.color, stroke1.width * 2));
       }
-      shape.setAttribute("fill", fill);
-      shape.removeAttribute("stroke");
-      for (const c of clones) parent.insertBefore(c, shape);
+
+      const fillLayer = doc.createElementNS(SVG_NS, "g");
+      fillLayer.setAttribute("fill", fill);
+      fillLayer.setAttribute("stroke", "none");
+      for (const n of original) {
+        const c = n.cloneNode(true);
+        if (c.nodeType === 1) stripFillStroke(c);
+        fillLayer.appendChild(c);
+      }
+      svg.appendChild(fillLayer);
     }
   }
 
@@ -243,6 +268,27 @@ function renderUploadedSvg(logo) {
   }
 
   return new XMLSerializer().serializeToString(svg);
+}
+
+// Remove per-element fill/stroke so the layer's group-level fill/stroke
+// wins. Recurses into groups.
+function stripFillStroke(node) {
+  if (node.nodeType !== 1) return;
+  node.removeAttribute("fill");
+  node.removeAttribute("stroke");
+  node.removeAttribute("stroke-width");
+  // style="fill:…" also needs cleaning.
+  const style = node.getAttribute("style");
+  if (style) {
+    const cleaned = style
+      .replace(/(^|;)\s*fill\s*:[^;]*/gi, "$1")
+      .replace(/(^|;)\s*stroke\s*:[^;]*/gi, "$1")
+      .replace(/(^|;)\s*stroke-width\s*:[^;]*/gi, "$1")
+      .replace(/;;+/g, ";").replace(/^;|;$/g, "");
+    if (cleaned) node.setAttribute("style", cleaned);
+    else node.removeAttribute("style");
+  }
+  for (const child of Array.from(node.childNodes)) stripFillStroke(child);
 }
 
 export function renderLogoSvg(logo) {

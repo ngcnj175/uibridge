@@ -234,8 +234,8 @@ export function toText(state) {
     }
     if (l.source.type === "text" || l.source.capability === "full") {
       lines.push(`- 本体色: ${l.fill}`);
-      lines.push(`- 外線: ${l.stroke1.enabled ? `${l.stroke1.width}px（${l.stroke1.color}）` : "なし"}`);
-      lines.push(`- 追加外線: ${l.stroke2.enabled ? `${l.stroke2.width}px（${l.stroke2.color}）` : "なし"}`);
+      lines.push(`- アウトライン: ${l.stroke1.enabled ? `${l.stroke1.width}px（${l.stroke1.color}）` : "なし"}`);
+      lines.push(`- 追加アウトライン: ${l.stroke2.enabled ? `${l.stroke2.width}px（${l.stroke2.color}）` : "なし"}`);
     }
     lines.push(`- 影: ${l.shadow.enabled ? `x${l.shadow.x} y${l.shadow.y} blur${l.shadow.blur} ${l.shadow.color}` : "なし"}`);
     lines.push("");
