@@ -44,6 +44,8 @@
       <h1 class="preview-title">Preview</h1>
       <p class="preview-lead">プリセットを切り替えたり、下の調整パネルをいじると即時に反映されます。</p>
 
+      <div class="logo-stage" id="logo-stage" aria-label="ロゴプレビュー"></div>
+
       <div class="preview-row">
         <button class="ui-button" type="button" contenteditable="plaintext-only" spellcheck="false">Click me</button>
         <button class="ui-button" type="button" contenteditable="plaintext-only" spellcheck="false">Secondary</button>
@@ -64,6 +66,7 @@
   <aside class="panel" id="panel" aria-label="調整パネル">
     <div class="panel-tabs" role="tablist" id="panel-tabs">
       <button role="tab" data-part="background" class="tab is-active">背景</button>
+      <button role="tab" data-part="logo" class="tab">ロゴ</button>
       <button role="tab" data-part="button" class="tab">ボタン</button>
       <button role="tab" data-part="card" class="tab">カード</button>
       <button role="tab" data-part="input" class="tab">入力欄</button>

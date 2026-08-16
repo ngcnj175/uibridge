@@ -4,6 +4,7 @@
 //   text: Japanese natural-language description
 
 import { overlayToCss, overlayLabel } from "./overlay.js";
+import { renderLogoSvg } from "./logo.js";
 
 function bgToCss(bg) {
   if (!bg) return "transparent";
@@ -82,8 +83,11 @@ function bgStyle(bg) {
 
 export function toHtml(state) {
   const { parts } = state;
+  const logo = parts.logo ? indent(renderLogoSvg(parts.logo), "  ") : "";
   return [
     `<div style="${bgStyle(parts.background)} padding: 24px;">`,
+    logo && `  ${logo.trim()}`,
+    logo && ``,
     `  <button style="${buttonStyle(parts.button)}">Click me</button>`,
     ``,
     `  <div style="${cardStyle(parts.card)}">`,
@@ -93,7 +97,11 @@ export function toHtml(state) {
     ``,
     `  <input type="text" placeholder="入力…" style="${inputStyle(parts.input)}">`,
     `</div>`,
-  ].join("\n");
+  ].filter((l) => l !== false && l !== undefined).join("\n");
+}
+
+function indent(text, pad) {
+  return text.split("\n").map((l) => pad + l).join("\n");
 }
 
 // --- Format B: CSS variables + class rules ----------------------------
@@ -215,6 +223,23 @@ export function toText(state) {
   lines.push(`- 影: ${card.shadow || "なし"}`);
   lines.push(`- 内側余白: ${card.padding}px`);
   lines.push("");
+  if (parts.logo) {
+    const l = parts.logo;
+    lines.push("【ロゴ】");
+    if (l.source.type === "svg") {
+      lines.push(`- ソース: SVGアップロード（${l.source.value || "unnamed.svg"}、${l.source.capability === "full" ? "編集可" : "表示のみ"}）`);
+    } else {
+      lines.push(`- テキスト: 「${l.source.value}」`);
+      lines.push(`- フォント: ${l.fontFamily}、${l.fontSize}px、太さ${l.fontWeight}${l.italic ? "、斜体" : ""}`);
+    }
+    if (l.source.type === "text" || l.source.capability === "full") {
+      lines.push(`- 本体色: ${l.fill}`);
+      lines.push(`- 外線: ${l.stroke1.enabled ? `${l.stroke1.width}px（${l.stroke1.color}）` : "なし"}`);
+      lines.push(`- 追加外線: ${l.stroke2.enabled ? `${l.stroke2.width}px（${l.stroke2.color}）` : "なし"}`);
+    }
+    lines.push(`- 影: ${l.shadow.enabled ? `x${l.shadow.x} y${l.shadow.y} blur${l.shadow.blur} ${l.shadow.color}` : "なし"}`);
+    lines.push("");
+  }
   lines.push("【入力欄】");
   lines.push(`- 背景: ${inp.background}`);
   lines.push(`- 文字色: ${inp.textColor}`);

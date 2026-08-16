@@ -61,6 +61,22 @@ export const defaultParts = {
     paddingX: 12,
     paddingY: 10,
   },
+  logo: {
+    // source.type: "text" | "svg". For "svg", `markup` holds the sanitized
+    // <svg>…</svg> string; `capability` reports what edits are safe to apply
+    // ("full" = fill/stroke overrides, "display" = render only).
+    source: { type: "text", value: "UIBridge", markup: "", capability: "full" },
+    fontFamily: "system-ui",
+    fontSize: 96,
+    fontWeight: 700,
+    italic: false,
+    letterSpacing: 0,
+    fill: "#667eea",
+    // stroke1 is the inner outline, stroke2 wraps around stroke1.
+    stroke1: { enabled: true, width: 4, color: "#ffffff" },
+    stroke2: { enabled: false, width: 10, color: "#1a1a1a" },
+    shadow: { enabled: false, x: 0, y: 4, blur: 8, color: "rgba(0,0,0,0.3)" },
+  },
 };
 
 // Deep clone via structured JSON — tokens/parts are plain data.

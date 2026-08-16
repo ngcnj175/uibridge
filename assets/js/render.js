@@ -3,6 +3,7 @@
 
 import { defaultTokens, defaultParts, clone } from "./state.js";
 import { overlayToCss } from "./overlay.js";
+import { renderLogoSvg } from "./logo.js";
 
 // Shallow-per-key deep merge sufficient for our 2-level shapes.
 function mergeDeep(base, over) {
@@ -90,6 +91,12 @@ export function applyState(root, state) {
   s.setProperty("--card-border-color", parts.card.borderColor);
   s.setProperty("--card-shadow", parts.card.shadow || "none");
   s.setProperty("--card-padding", `${parts.card.padding}px`);
+
+  // Logo — the SVG itself is regenerated on every state edit and dropped
+  // into the stage element. Kept separate from CSS vars because outline
+  // stacking is easier to express as inline SVG than as CSS.
+  const stage = document.getElementById("logo-stage");
+  if (stage && parts.logo) stage.innerHTML = renderLogoSvg(parts.logo);
 
   // Input
   s.setProperty("--input-bg", parts.input.background);
