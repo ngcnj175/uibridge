@@ -188,7 +188,7 @@ function renderText(logo) {
   } = logo;
 
   // Rough box sized off font metrics; viewBox lets it scale to any container.
-  const pad = Math.max(20, (stroke1.enabled ? stroke1.width : 0) + (stroke2.enabled ? stroke2.width : 0) + 12);
+  const pad = Math.max(20, outwardPadding(stroke1, stroke2, null) + 12);
   const approxW = Math.max(120, (source.value || " ").length * fontSize * 0.62 + pad * 2);
   const approxH = fontSize * 1.35 + pad * 2;
 
@@ -212,12 +212,11 @@ function renderText(logo) {
   // shows through when stroke widths are large.
   const layers = [];
   if (stroke2.enabled) {
-    const w = (stroke1.enabled ? stroke1.width : 0) * 2 + stroke2.width * 2;
+    const w = outerStrokeWidth(stroke1, stroke2);
     layers.push(`<text ${common} fill="${s2Paint.ref}" stroke="${s2Paint.ref}" stroke-width="${w}" stroke-linejoin="round">${label}</text>`);
   }
   if (stroke1.enabled) {
-    const w = stroke1.width * 2;
-    layers.push(`<text ${common} fill="${s1Paint.ref}" stroke="${s1Paint.ref}" stroke-width="${w}" stroke-linejoin="round">${label}</text>`);
+    layers.push(`<text ${common} fill="${s1Paint.ref}" stroke="${s1Paint.ref}" stroke-width="${stroke1.width * 2}" stroke-linejoin="round">${label}</text>`);
   }
   layers.push(`<text ${common} fill="${fillPaint.ref}">${label}</text>`);
 
@@ -287,37 +286,41 @@ function renderUploadedSvg(logo) {
         svg.appendChild(defs);
       }
 
-      if (stroke2.enabled) {
-        const w = (stroke1.enabled ? stroke1.width : 0) * 2 + stroke2.width * 2;
-        svg.appendChild(buildOutlineLayer(s2Paint.ref, w));
-      }
-      if (stroke1.enabled) {
-        svg.appendChild(buildOutlineLayer(s1Paint.ref, stroke1.width * 2));
-      }
-
-      const fillLayer = doc.createElementNS(SVG_NS, "g");
-      fillLayer.setAttribute("fill", fillPaint.ref);
-      fillLayer.setAttribute("stroke", "none");
-      for (const n of original) {
-        const c = n.cloneNode(true);
-        if (c.nodeType === 1) stripFillStroke(c);
-        fillLayer.appendChild(c);
-      }
-      svg.appendChild(fillLayer);
+      if (stroke2.enabled) svg.appendChild(buildOutlineLayer(s2Paint.ref, outerStrokeWidth(stroke1, stroke2)));
+      if (stroke1.enabled) svg.appendChild(buildOutlineLayer(s1Paint.ref, stroke1.width * 2));
+      svg.appendChild(buildFillLayer(doc, original, fillPaint.ref));
     }
   }
 
   if (shadow && shadow.enabled) {
-    const defs = svg.querySelector("defs") || (() => {
-      const d = doc.createElementNS(SVG_NS, "defs");
-      svg.insertBefore(d, svg.firstChild);
-      return d;
-    })();
+    let defs = svg.querySelector("defs");
+    if (!defs) {
+      defs = doc.createElementNS(SVG_NS, "defs");
+      svg.insertBefore(defs, svg.firstChild);
+    }
     defs.insertAdjacentHTML("beforeend", shadowFilter("logo-shadow", shadow));
     svg.setAttribute("filter", "url(#logo-shadow)");
   }
 
   return new XMLSerializer().serializeToString(svg);
+}
+
+function buildFillLayer(doc, originalChildren, ref) {
+  const layer = doc.createElementNS(SVG_NS, "g");
+  layer.setAttribute("fill", ref);
+  layer.setAttribute("stroke", "none");
+  for (const n of originalChildren) {
+    const c = n.cloneNode(true);
+    if (c.nodeType === 1) stripFillStroke(c);
+    layer.appendChild(c);
+  }
+  return layer;
+}
+
+// Visible outward extent of a stacked-outline layer, in SVG user units.
+// stroke2 sits under stroke1, so its stroke-width has to cover both.
+function outerStrokeWidth(stroke1, stroke2) {
+  return (stroke1.enabled ? stroke1.width : 0) * 2 + stroke2.width * 2;
 }
 
 function outwardPadding(stroke1, stroke2, shadow) {
@@ -350,9 +353,7 @@ function stripFillStroke(node) {
   const style = node.getAttribute("style");
   if (style) {
     const cleaned = style
-      .replace(/(^|;)\s*fill\s*:[^;]*/gi, "$1")
-      .replace(/(^|;)\s*stroke\s*:[^;]*/gi, "$1")
-      .replace(/(^|;)\s*stroke-width\s*:[^;]*/gi, "$1")
+      .replace(/(^|;)\s*(?:fill|stroke|stroke-width)\s*:[^;]*/gi, "$1")
       .replace(/;;+/g, ";").replace(/^;|;$/g, "");
     if (cleaned) node.setAttribute("style", cleaned);
     else node.removeAttribute("style");

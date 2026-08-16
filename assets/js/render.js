@@ -73,6 +73,10 @@ export function composeBackground(base, overlay) {
   return `${overlayCss}, ${bgAsImage(base)}`;
 }
 
+// Cached JSON key of the last-rendered logo state; lets applyState skip
+// the SVG rebuild when non-logo parts changed.
+let lastLogoKey = "";
+
 export function applyState(root, state) {
   const { tokens, parts } = state;
   const s = root.style;
@@ -108,12 +112,19 @@ export function applyState(root, state) {
   s.setProperty("--card-shadow", parts.card.shadow || "none");
   s.setProperty("--card-padding", `${parts.card.padding}px`);
 
-  // Logo — the SVG itself is regenerated on every state edit and dropped
-  // into the stage element. Kept separate from CSS vars because outline
-  // stacking is easier to express as inline SVG than as CSS.
-  const stage = document.getElementById("logo-stage");
+  // Logo — regenerated as inline SVG and dropped into the stage. Kept
+  // separate from CSS vars because outline stacking (and gradient defs)
+  // are easier to express as SVG than as CSS.
+  // Non-logo edits (button/card/input slider drags) re-run applyState too,
+  // so memoize by JSON key — skipping the DOMParser/serialize round-trip
+  // is a real win for uploaded SVGs with big markup.
+  const stage = root.querySelector("#logo-stage");
   if (stage && parts.logo) {
-    stage.innerHTML = renderLogoSvg(parts.logo);
+    const key = JSON.stringify(parts.logo);
+    if (key !== lastLogoKey) {
+      stage.innerHTML = renderLogoSvg(parts.logo);
+      lastLogoKey = key;
+    }
     s.setProperty("--logo-size", `${parts.logo.size || 300}px`);
   }
 

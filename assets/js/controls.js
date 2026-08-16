@@ -14,6 +14,65 @@ const FONT_FAMILIES = [
   { value: "'Comic Sans MS', cursive", label: "Casual" },
 ];
 
+// A logo paint (fill or stroke) is editable when the source is text, or when
+// an uploaded SVG was classified as safely re-styleable. Uploaded SVGs
+// containing text/images/gradients drop to "display" and skip the paint UI.
+const paintable = (l) => l.source.type === "text" || l.source.capability === "full";
+
+// Emit the 5-field paint block for a given key prefix.
+// `extraWhen` layers on top of `paintable` (e.g. "…and this stroke is enabled").
+function paintFields(keyPrefix, labelPrefix, extraWhen = () => true) {
+  const gate = (l) => paintable(l) && extraWhen(l);
+  return [
+    { kind: "bgType", key: `${keyPrefix}.type`, label: `${labelPrefix}タイプ`, when: gate },
+    { kind: "color", key: `${keyPrefix}.color`, label: `${labelPrefix}色`,
+      when: (l) => gate(l) && get(l, `${keyPrefix}.type`) === "solid" },
+    { kind: "range", key: `${keyPrefix}.angle`, label: `${labelPrefix}角度`, min: 0, max: 360, step: 1,
+      when: (l) => gate(l) && get(l, `${keyPrefix}.type`) === "gradient" },
+    { kind: "gradientStop", key: `${keyPrefix}.stops.0`, label: `${labelPrefix}開始`,
+      when: (l) => gate(l) && get(l, `${keyPrefix}.type`) === "gradient" },
+    { kind: "gradientStop", key: `${keyPrefix}.stops.1`, label: `${labelPrefix}終了`,
+      when: (l) => gate(l) && get(l, `${keyPrefix}.type`) === "gradient" },
+  ];
+}
+
+function strokeBlock(n, { widthMax, labels }) {
+  const key = `stroke${n}`;
+  const enabled = (l) => l[key].enabled;
+  return [
+    { kind: "checkbox", key: `${key}.enabled`, label: labels.enable, when: paintable },
+    { kind: "range", key: `${key}.width`, label: labels.width, min: 1, max: widthMax, step: 0.5, unit: "px",
+      when: (l) => paintable(l) && enabled(l) },
+    ...paintFields(`${key}.paint`, labels.paint, enabled),
+  ];
+}
+
+function buildLogoSchema() {
+  const isText = (l) => l.source.type === "text";
+  const shadowOn = (l) => l.shadow.enabled;
+  return [
+    { kind: "sourceType", key: "source.type", label: "ソース" },
+    { kind: "text", key: "source.value", label: "文字", when: isText },
+    { kind: "svgUpload", key: "source", label: "SVG", when: (l) => l.source.type === "svg" },
+    { kind: "range", key: "size", label: "表示サイズ", min: 80, max: 800, step: 4, unit: "px" },
+    { kind: "select", key: "fontFamily", label: "フォント", options: FONT_FAMILIES, when: isText },
+    { kind: "range", key: "fontSize", label: "文字サイズ", min: 24, max: 200, step: 1, unit: "px", when: isText },
+    { kind: "range", key: "fontWeight", label: "太さ", min: 100, max: 900, step: 100, when: isText },
+    { kind: "checkbox", key: "italic", label: "斜体", when: isText },
+    { kind: "range", key: "letterSpacing", label: "字間", min: -5, max: 20, step: 0.5, unit: "px", when: isText },
+
+    ...paintFields("fill", "本体"),
+    ...strokeBlock(1, { widthMax: 30, labels: { enable: "アウトライン", width: "アウトライン太さ", paint: "アウトライン" } }),
+    ...strokeBlock(2, { widthMax: 40, labels: { enable: "追加アウトライン", width: "追加太さ", paint: "追加" } }),
+
+    { kind: "checkbox", key: "shadow.enabled", label: "影" },
+    { kind: "range", key: "shadow.x", label: "影 X", min: -30, max: 30, step: 1, unit: "px", when: shadowOn },
+    { kind: "range", key: "shadow.y", label: "影 Y", min: -30, max: 30, step: 1, unit: "px", when: shadowOn },
+    { kind: "range", key: "shadow.blur", label: "影ぼかし", min: 0, max: 40, step: 1, unit: "px", when: shadowOn },
+    { kind: "color", key: "shadow.color", label: "影色", when: shadowOn },
+  ];
+}
+
 const partSchemas = {
   background: [
     { kind: "bgType", key: "type", label: "背景タイプ" },
@@ -61,67 +120,7 @@ const partSchemas = {
     { kind: "range", key: "paddingX", label: "左右余白", min: 0, max: 32, step: 1, unit: "px" },
     { kind: "range", key: "paddingY", label: "上下余白", min: 0, max: 24, step: 1, unit: "px" },
   ],
-  logo: [
-    { kind: "sourceType", key: "source.type", label: "ソース" },
-    { kind: "text", key: "source.value", label: "文字", when: (l) => l.source.type === "text" },
-    { kind: "svgUpload", key: "source", label: "SVG", when: (l) => l.source.type === "svg" },
-    { kind: "range", key: "size", label: "表示サイズ", min: 80, max: 800, step: 4, unit: "px" },
-    { kind: "select", key: "fontFamily", label: "フォント", options: FONT_FAMILIES, when: (l) => l.source.type === "text" },
-    { kind: "range", key: "fontSize", label: "文字サイズ", min: 24, max: 200, step: 1, unit: "px", when: (l) => l.source.type === "text" },
-    { kind: "range", key: "fontWeight", label: "太さ", min: 100, max: 900, step: 100, when: (l) => l.source.type === "text" },
-    { kind: "checkbox", key: "italic", label: "斜体", when: (l) => l.source.type === "text" },
-    { kind: "range", key: "letterSpacing", label: "字間", min: -5, max: 20, step: 0.5, unit: "px", when: (l) => l.source.type === "text" },
-
-    // Fill paint (solid or 2-stop gradient).
-    { kind: "bgType", key: "fill.type", label: "本体タイプ",
-      when: (l) => l.source.type === "text" || l.source.capability === "full" },
-    { kind: "color", key: "fill.color", label: "本体色",
-      when: (l) => (l.source.type === "text" || l.source.capability === "full") && l.fill.type === "solid" },
-    { kind: "range", key: "fill.angle", label: "本体角度", min: 0, max: 360, step: 1,
-      when: (l) => (l.source.type === "text" || l.source.capability === "full") && l.fill.type === "gradient" },
-    { kind: "gradientStop", key: "fill.stops.0", label: "本体開始",
-      when: (l) => (l.source.type === "text" || l.source.capability === "full") && l.fill.type === "gradient" },
-    { kind: "gradientStop", key: "fill.stops.1", label: "本体終了",
-      when: (l) => (l.source.type === "text" || l.source.capability === "full") && l.fill.type === "gradient" },
-
-    // Outline (stroke1).
-    { kind: "checkbox", key: "stroke1.enabled", label: "アウトライン",
-      when: (l) => l.source.type === "text" || l.source.capability === "full" },
-    { kind: "range", key: "stroke1.width", label: "アウトライン太さ", min: 1, max: 30, step: 0.5, unit: "px",
-      when: (l) => (l.source.type === "text" || l.source.capability === "full") && l.stroke1.enabled },
-    { kind: "bgType", key: "stroke1.paint.type", label: "アウトライン塗り",
-      when: (l) => (l.source.type === "text" || l.source.capability === "full") && l.stroke1.enabled },
-    { kind: "color", key: "stroke1.paint.color", label: "アウトライン色",
-      when: (l) => (l.source.type === "text" || l.source.capability === "full") && l.stroke1.enabled && l.stroke1.paint.type === "solid" },
-    { kind: "range", key: "stroke1.paint.angle", label: "アウトライン角度", min: 0, max: 360, step: 1,
-      when: (l) => (l.source.type === "text" || l.source.capability === "full") && l.stroke1.enabled && l.stroke1.paint.type === "gradient" },
-    { kind: "gradientStop", key: "stroke1.paint.stops.0", label: "アウトライン開始",
-      when: (l) => (l.source.type === "text" || l.source.capability === "full") && l.stroke1.enabled && l.stroke1.paint.type === "gradient" },
-    { kind: "gradientStop", key: "stroke1.paint.stops.1", label: "アウトライン終了",
-      when: (l) => (l.source.type === "text" || l.source.capability === "full") && l.stroke1.enabled && l.stroke1.paint.type === "gradient" },
-
-    // Outer outline (stroke2).
-    { kind: "checkbox", key: "stroke2.enabled", label: "追加アウトライン",
-      when: (l) => l.source.type === "text" || l.source.capability === "full" },
-    { kind: "range", key: "stroke2.width", label: "追加太さ", min: 1, max: 40, step: 0.5, unit: "px",
-      when: (l) => (l.source.type === "text" || l.source.capability === "full") && l.stroke2.enabled },
-    { kind: "bgType", key: "stroke2.paint.type", label: "追加塗り",
-      when: (l) => (l.source.type === "text" || l.source.capability === "full") && l.stroke2.enabled },
-    { kind: "color", key: "stroke2.paint.color", label: "追加色",
-      when: (l) => (l.source.type === "text" || l.source.capability === "full") && l.stroke2.enabled && l.stroke2.paint.type === "solid" },
-    { kind: "range", key: "stroke2.paint.angle", label: "追加角度", min: 0, max: 360, step: 1,
-      when: (l) => (l.source.type === "text" || l.source.capability === "full") && l.stroke2.enabled && l.stroke2.paint.type === "gradient" },
-    { kind: "gradientStop", key: "stroke2.paint.stops.0", label: "追加開始",
-      when: (l) => (l.source.type === "text" || l.source.capability === "full") && l.stroke2.enabled && l.stroke2.paint.type === "gradient" },
-    { kind: "gradientStop", key: "stroke2.paint.stops.1", label: "追加終了",
-      when: (l) => (l.source.type === "text" || l.source.capability === "full") && l.stroke2.enabled && l.stroke2.paint.type === "gradient" },
-
-    { kind: "checkbox", key: "shadow.enabled", label: "影" },
-    { kind: "range", key: "shadow.x", label: "影 X", min: -30, max: 30, step: 1, unit: "px", when: (l) => l.shadow.enabled },
-    { kind: "range", key: "shadow.y", label: "影 Y", min: -30, max: 30, step: 1, unit: "px", when: (l) => l.shadow.enabled },
-    { kind: "range", key: "shadow.blur", label: "影ぼかし", min: 0, max: 40, step: 1, unit: "px", when: (l) => l.shadow.enabled },
-    { kind: "color", key: "shadow.color", label: "影色", when: (l) => l.shadow.enabled },
-  ],
+  logo: buildLogoSchema(),
 };
 
 function get(obj, path) {

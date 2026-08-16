@@ -184,14 +184,9 @@ function describeBackground(bg) {
   return `単色 ${bg.color}`;
 }
 
-function describePaint(paint) {
-  if (!paint) return "なし";
-  if (paint.type === "gradient") {
-    const [a, b] = paint.stops || [];
-    return `${paint.angle}度グラデ ${a?.color}（${a?.position}%）→ ${b?.color}（${b?.position}%）`;
-  }
-  return `単色 ${paint.color}`;
-}
+// Logo paints share the {type, color, angle, stops} shape with backgrounds,
+// so reuse describeBackground for consistent wording.
+const describePaint = (p) => (p ? describeBackground(p) : "なし");
 
 function describeBorder(width, color) {
   return width > 0 ? `${width}px（${color}）` : "なし";
